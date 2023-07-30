@@ -214,7 +214,7 @@ if "chroma_collections" in st.session_state:
             query_dataframe_placeholder = st.empty()
 
             if query:
-                query_df = st.session_state["conn"].retrieve(collection_name=st.session_state["selected_collection"], query)
+                query_df = st.session_state["conn"].retrieve(collection_name=st.session_state["selected_collection"], query=query)
                 query_dataframe_placeholder.data_editor(query_df)
 
 
