@@ -60,8 +60,14 @@ class ChromaDBConnection(ExperimentalBaseConnection):
             raise ex
 
     def get_collection_names(self):
+
         collection_names = []
-        collections = self._raw_instance.list_collections()
+
+        @st.cache_data(ttl=900)
+        def get_collections():
+            return self._raw_instance.list_collections()
+
+        collections = get_collections()
         for col in collections:
             logging.info(f"Embedding used: {col._embedding_function.__class__.__name__}")
             collection_names.append(col.name)
@@ -69,10 +75,14 @@ class ChromaDBConnection(ExperimentalBaseConnection):
         return collection_names
 
     def get_collection_data(self, collection_name, attributes: List = ["documents", "embeddings", "metadatas"]):
-        collection = self._raw_instance.get_collection(collection_name)
-        collection_data = collection.get(
-            include=attributes
-        )
+
+        @st.cache_data(ttl=900)
+        def get_data():
+            collection = self._raw_instance.get_collection(collection_name)
+            return collection.get(
+                include=attributes
+            )
+        collection_data = get_data()
         return pd.DataFrame(data=collection_data)
 
     def get_collection_embedding_function(self, collection_name):
