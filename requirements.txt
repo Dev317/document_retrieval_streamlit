@@ -126,4 +126,3 @@ yarl==1.9.2
 zipp==3.16.2
 zstandard==0.21.0
 pysqlite3-binary==0.5.1
-pysqlite3==0.5.1
