@@ -13,6 +13,10 @@ from langchain.document_loaders import DirectoryLoader
 from langchain.text_splitter import CharacterTextSplitter
 import uuid
 
+st.session_state["UPLOAD_FOLDER"] = "/tmp/upload"
+if not os.path.exists(st.session_state["UPLOAD_FOLDER"]):
+    logging.info("Creating upload folder!")
+    os.makedirs(st.session_state["UPLOAD_FOLDER"])
 
 class ChromaDBConnection(ExperimentalBaseConnection):
 
