@@ -18,8 +18,13 @@ class ChromaDBConnection(ExperimentalBaseConnection):
         type = self._kwargs["client_type"]
 
         if type == "PersistentClient":
+            path = self._kwargs["path"] if "path" in self._kwargs else "/tmp/.chromadb"
+
+            if path.split("/")[0] != "/tmp":
+                raise Exception("Path should start with `/tmp`")
+
             return chromadb.PersistentClient(
-                path=self._kwargs["path"],
+                path=path,
             )
 
         if type == "HttpClient":
@@ -86,7 +91,7 @@ st.session_state["configuration"]["client_type"] = client_type
 if client_type == "PersistentClient":
     persistent_path = st.text_input(
         label="Persistent directory",
-        placeholder="/Users/johndoe/Documents/.chroma"
+        placeholder="/tmp/.chroma"
     )
     st.session_state["configuration"]["path"] = persistent_path
 
