@@ -82,10 +82,13 @@ class ChromaDBConnection(ExperimentalBaseConnection):
     def retrieve(self, collection_name, query):
         collection = self._raw_instance.get_collection(collection_name)
         embeddings = collection._embedding_function._call(query)
+        logging.info(embeddings)
         results = collection.query(
             query_embeddings=embeddings,
             n_results=10,
         )
+
+        logging.info(results)
 
         return pd.DataFrame(data=results)
 
