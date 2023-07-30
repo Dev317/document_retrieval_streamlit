@@ -81,11 +81,10 @@ class ChromaDBConnection(ExperimentalBaseConnection):
 
     def retrieve(self, collection_name, query):
         collection = self._raw_instance.get_collection(collection_name)
+        embeddings = collection._embedding_function._call(query)
         results = collection.query(
-            query_texts=[query],
+            query_embeddings=embeddings,
             n_results=10,
-            where={"metadata_field": "is_equal_to_this"},
-            where_document={"$contains":"search_string"}
         )
 
         return pd.DataFrame(data=results)
