@@ -46,7 +46,7 @@ class ChromaDBConnection(ExperimentalBaseConnection):
             embedding_function = GoogleVertexEmbeddingFunction(**config)
         elif embedding_function_name == "OpenAIEmbedding":
             embedding_function = OpenAIEmbeddingFunction(**config)
-
+        logging.info(f"Embedding used: {embedding_function.__class__.__name__}")
         try:
             self._raw_instance.create_collection(name=collection_name,
                                                  embedding_function=embedding_function)
@@ -57,6 +57,7 @@ class ChromaDBConnection(ExperimentalBaseConnection):
         collection_names = []
         collections = self._raw_instance.list_collections()
         for col in collections:
+            logging.info(f"Embedding used: {col._embedding_function.__class__.__name__}")
             collection_names.append(col.name)
 
         return collection_names
