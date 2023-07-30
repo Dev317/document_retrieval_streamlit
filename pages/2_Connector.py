@@ -212,7 +212,7 @@ if "chroma_collections" in st.session_state:
                 st.session_state["conn"].upload_document(st.session_state["selected_collection"], file_paths)
                 dataframe_placeholder.empty()
                 new_df = st.session_state["conn"].get_collection_data(collection_name=st.session_state["selected_collection"])
-                dataframe_placeholder.data_editor(new_df)
+                dataframe_placeholder.data_editor(new_df, key="new_df")
 
             st.subheader("Document Query")
             query_placeholder = st.empty()
