@@ -1,16 +1,20 @@
+__import__('pysqlite3')
+import sys
+sys.modules['sqlite3'] = sys.modules.pop('pysqlite3')
+
 import streamlit as st
 from streamlit.connections import ExperimentalBaseConnection
 import chromadb
 from typing import List
 import pandas as pd
 from chromadb.utils.embedding_functions import *
+import logging
 
 
 
 class ChromaDBConnection(ExperimentalBaseConnection):
 
     def _connect(self, **kwargs) -> chromadb.Client:
-        print(self._kwargs)
         type = self._kwargs["client_type"]
 
         if type == "PersistentClient":
@@ -112,7 +116,7 @@ def connectChroma():
         st.session_state["chroma_collections"] = st.session_state["conn"].get_collection_names()
 
     except Exception as ex:
-        print(ex)
+        logging.error(f"Error: {str(ex)}")
         st.toast(body="Failed to establish connection",
                 icon="❌")
 
