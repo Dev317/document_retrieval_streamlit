@@ -20,7 +20,7 @@ class ChromaDBConnection(ExperimentalBaseConnection):
         if type == "PersistentClient":
             path = self._kwargs["path"] if "path" in self._kwargs else "/tmp/.chromadb"
 
-            if path.split("/")[0] != "/tmp":
+            if path.split("/")[0] != "tmp":
                 raise Exception("Path should start with `/tmp`")
 
             return chromadb.PersistentClient(
