@@ -90,6 +90,7 @@ class ChromaDBConnection(ExperimentalBaseConnection):
         results = collection.query(
             query_embeddings=embeddings,
             n_results=10,
+            include=["ids","documents", "distances", "embeddings"]
         )
 
         logging.info(results)
