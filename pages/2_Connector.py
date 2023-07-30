@@ -9,7 +9,9 @@ from typing import List
 import pandas as pd
 from chromadb.utils.embedding_functions import *
 import logging
-
+from langchain.document_loaders import DirectoryLoader
+from langchain.text_splitter import CharacterTextSplitter
+import uuid
 
 
 class ChromaDBConnection(ExperimentalBaseConnection):
@@ -72,6 +74,33 @@ class ChromaDBConnection(ExperimentalBaseConnection):
     def get_collection_embedding_function(self, collection_name):
         collection = self._raw_instance.get_collection(collection_name)
         return collection._embedding_function.__class__.__name__
+
+
+    def upload_document(self, collection_name, file_paths):
+        collection = self._raw_instance.get_collection(collection_name)
+
+        try:
+            loader = DirectoryLoader(st.session_state["UPLOAD_FOLDER"], glob="*.*")
+            documents = loader.load()
+            text_splitter = CharacterTextSplitter(chunk_size=1000, chunk_overlap=0)
+            docs = text_splitter.split_documents(documents)
+
+            for doc in docs:
+                fid = f"{str(uuid.uuid4())}"
+                embedding = collection._embedding_function([doc.page_content])
+                source = doc.metadata['source'].split("/")[-1]
+                collection.add(ids=[fid],
+                            metadatas={'source': source},
+                            documents=doc.page_content,
+                            embeddings=embedding)
+
+            for file_path in file_paths:
+                os.remove(file_path)
+
+            st.toast(body='New file uploaded!',
+                    icon='✅')
+        except Exception as ex:
+            raise ex
 
 
 st.header("ChromaDB Connection")
@@ -144,6 +173,25 @@ if "chroma_collections" in st.session_state:
 
             dataframe_placeholder = st.empty()
             dataframe_placeholder.data_editor(df)
+
+
+            st.subheader("Document Upload")
+
+            file_uploads = st.file_uploader('Only PDF(s)', type=['pdf'], accept_multiple_files=True)
+            file_paths = []
+
+            if file_uploads:
+                for pdf_file in file_uploads:
+                    file_path = os.path.join(st.session_state["UPLOAD_FOLDER"], pdf_file.name)
+                    file_paths.append(file_path)
+
+                    with open(file_path,"wb") as f:
+                        f.write(pdf_file.getbuffer())
+
+                st.session_state["conn"].upload_document(st.session_state["selected_collection"], file_paths)
+                dataframe_placeholder.empty()
+                new_df = st.session_state["conn"].get_collection_data(collection_name=st.session_state["selected_collection"])
+                dataframe_placeholder.data_editor(new_df)
 
 
 if "is_connected" in st.session_state and st.session_state["is_connected"]:
