@@ -150,10 +150,11 @@ if "is_connected" in st.session_state and st.session_state["is_connected"]:
     with st.container():
         new_collection_name = st.sidebar.text_input(label='New collection name', placeholder='')
         new_collection_embedding = st.sidebar.selectbox(label='Embedding function',
-                                                        options=["OpenAIEmbedding", "VertexEmbedding"])
+                                                        options=["DefaultEmbedding", "OpenAIEmbedding", "VertexEmbedding"])
 
         config = {}
-        config["api_key"] = st.sidebar.text_input(label='API KEY', placeholder='')
+        if new_collection_embedding != "DefaultEmbedding":
+            config["api_key"] = st.sidebar.text_input(label='API KEY', placeholder='')
 
         if new_collection_embedding == "VertexEmbedding":
             config["project_id"] = st.sidebar.text_input(label='PROJECT ID', placeholder='')
