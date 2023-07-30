@@ -79,6 +79,17 @@ class ChromaDBConnection(ExperimentalBaseConnection):
         collection = self._raw_instance.get_collection(collection_name)
         return collection._embedding_function.__class__.__name__
 
+    def retrieve(self, collection_name, query):
+        collection = self._raw_instance.get_collection(collection_name)
+        results = collection.query(
+            query_texts=[query],
+            n_results=10,
+            where={"metadata_field": "is_equal_to_this"},
+            where_document={"$contains":"search_string"}
+        )
+
+        return pd.DataFrame(data=results)
+
 
     def upload_document(self, collection_name, file_paths):
         collection = self._raw_instance.get_collection(collection_name)
@@ -196,6 +207,15 @@ if "chroma_collections" in st.session_state:
                 dataframe_placeholder.empty()
                 new_df = st.session_state["conn"].get_collection_data(collection_name=st.session_state["selected_collection"])
                 dataframe_placeholder.data_editor(new_df)
+
+            st.subheader("Document Query")
+            query_placeholder = st.empty()
+            query = query_placeholder.text_input(label="Query")
+            query_dataframe_placeholder = st.empty()
+
+            if query:
+                query_df = st.session_state["conn"].retrieve(collection_name=st.session_state["selected_collection"], query)
+                query_dataframe_placeholder.data_editor(query_df)
 
 
 if "is_connected" in st.session_state and st.session_state["is_connected"]:
