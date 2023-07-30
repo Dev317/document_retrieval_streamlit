@@ -8,7 +8,7 @@ import logging
 logging.basicConfig(level=logging.DEBUG)
 
 
-FOLDER = f"{os.getcwd()}/upload"
+FOLDER = f"/tmp/upload"
 CHROMA_PATH = f"{os.getcwd()}/.chroma"
 st.session_state["UPLOAD_FOLDER"] = FOLDER
 st.session_state["CHROMA_PATH"] = CHROMA_PATH
