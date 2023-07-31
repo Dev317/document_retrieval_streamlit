@@ -218,7 +218,7 @@ if "chroma_collections" in st.session_state:
 
                     dataframe_placeholder.empty()
                     new_df = st.session_state["conn"].get_collection_data(collection_name=st.session_state["selected_collection"])
-                    dataframe_placeholder.dataframe(new_df, key="new_df")
+                    dataframe_placeholder.dataframe(new_df)
 
             document_query_placeholder = st.empty()
             with document_query_placeholder.container():
@@ -279,7 +279,7 @@ if "chroma_collections" in st.session_state:
 
                     dataframe_placeholder.empty()
                     new_df = st.session_state["conn"].get_collection_data(collection_name=st.session_state["selected_collection"])
-                    dataframe_placeholder.dataframe(new_df, key="new_df")
+                    dataframe_placeholder.dataframe(new_df)
 
             with document_query_placeholder.container():
                 st.subheader("Document Query")
