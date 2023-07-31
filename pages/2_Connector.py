@@ -191,7 +191,7 @@ if "chroma_collections" in st.session_state:
                 st.markdown("Dataframe:")
 
                 dataframe_placeholder = st.empty()
-                dataframe_placeholder.data_editor(df)
+                dataframe_placeholder.dataframe(df)
 
             document_upload_placeholder = st.empty()
             with document_upload_placeholder.container():
@@ -218,7 +218,7 @@ if "chroma_collections" in st.session_state:
 
                     dataframe_placeholder.empty()
                     new_df = st.session_state["conn"].get_collection_data(collection_name=st.session_state["selected_collection"])
-                    dataframe_placeholder.data_editor(new_df, key="new_df")
+                    dataframe_placeholder.dataframe(new_df, key="new_df")
 
             document_query_placeholder = st.empty()
             with document_query_placeholder.container():
@@ -229,7 +229,7 @@ if "chroma_collections" in st.session_state:
 
                 if query:
                     query_df = st.session_state["conn"].retrieve(collection_name=st.session_state["selected_collection"], query=query)
-                    query_dataframe_placeholder.data_editor(query_df)
+                    query_dataframe_placeholder.dataframe(query_df)
 
     if len(st.session_state["chroma_collections"]) != 0 and delete_button_placeholder.button(label="❗ Delete collection", type="primary"):
         st.cache_resource.clear()
@@ -253,7 +253,7 @@ if "chroma_collections" in st.session_state:
                 st.markdown("Dataframe:")
 
                 dataframe_placeholder = st.empty()
-                dataframe_placeholder.data_editor(df)
+                dataframe_placeholder.dataframe(df)
 
             with document_upload_placeholder.container():
                 st.subheader("Document Upload")
@@ -279,7 +279,7 @@ if "chroma_collections" in st.session_state:
 
                     dataframe_placeholder.empty()
                     new_df = st.session_state["conn"].get_collection_data(collection_name=st.session_state["selected_collection"])
-                    dataframe_placeholder.data_editor(new_df, key="new_df")
+                    dataframe_placeholder.dataframe(new_df, key="new_df")
 
             with document_query_placeholder.container():
                 st.subheader("Document Query")
@@ -289,7 +289,7 @@ if "chroma_collections" in st.session_state:
 
                 if query:
                     query_df = st.session_state["conn"].retrieve(collection_name=st.session_state["selected_collection"], query=query)
-                    query_dataframe_placeholder.data_editor(query_df)
+                    query_dataframe_placeholder.dataframe(query_df)
 
         selected_collection_placeholder.empty()
         st.session_state["selected_collection"] = selected_collection_placeholder.selectbox(
