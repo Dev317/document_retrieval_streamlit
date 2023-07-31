@@ -16,6 +16,9 @@ import os
 import tempfile
 
 
+if "UPLOAD_FOLDER" not in st.session_state:
+    st.session_state["UPLOAD_FOLDER"] = f"{tempfile.gettempdir()}/upload"
+
 class ChromaDBConnection(ExperimentalBaseConnection):
 
     def _connect(self, **kwargs) -> chromadb.Client:
