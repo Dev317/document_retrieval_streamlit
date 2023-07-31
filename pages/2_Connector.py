@@ -12,11 +12,9 @@ import logging
 from langchain.document_loaders import DirectoryLoader
 from langchain.text_splitter import CharacterTextSplitter
 import uuid
+import os
+import tempfile
 
-st.session_state["UPLOAD_FOLDER"] = "/tmp/upload"
-if not os.path.exists(st.session_state["UPLOAD_FOLDER"]):
-    logging.info("Creating upload folder!")
-    os.makedirs(st.session_state["UPLOAD_FOLDER"])
 
 class ChromaDBConnection(ExperimentalBaseConnection):
 
@@ -24,7 +22,7 @@ class ChromaDBConnection(ExperimentalBaseConnection):
         type = self._kwargs["client_type"]
 
         if type == "PersistentClient":
-            path = self._kwargs["path"] if "path" in self._kwargs else "/tmp/.chromadb"
+            path = self._kwargs["path"] if "path" in self._kwargs else f"{tempfile.gettempdir()}/.chromadb"
 
             if path.split("/")[1] != "tmp":
                 raise Exception("Path should start with `/tmp`")
@@ -52,10 +50,15 @@ class ChromaDBConnection(ExperimentalBaseConnection):
             embedding_function = GoogleVertexEmbeddingFunction(**config)
         elif embedding_function_name == "OpenAIEmbedding":
             embedding_function = OpenAIEmbeddingFunction(**config)
-        logging.info(f"Embedding used: {embedding_function.__class__.__name__}")
         try:
             self._raw_instance.create_collection(name=collection_name,
                                                  embedding_function=embedding_function)
+        except Exception as ex:
+            raise ex
+
+    def delete_collection(self, collection_name):
+        try:
+            self._raw_instance.delete_collection(name=collection_name)
         except Exception as ex:
             raise ex
 
@@ -63,14 +66,12 @@ class ChromaDBConnection(ExperimentalBaseConnection):
         collection_names = []
         collections = self._raw_instance.list_collections()
         for col in collections:
-            logging.info(f"Embedding used: {col._embedding_function.__class__.__name__}")
             collection_names.append(col.name)
-
         return collection_names
 
     def get_collection_data(self, collection_name, attributes: List = ["documents", "embeddings", "metadatas"]):
 
-        @st.cache_data(ttl=900)
+        @st.cache_data(ttl=10)
         def get_data():
             collection = self._raw_instance.get_collection(collection_name)
             collection_data = collection.get(
@@ -86,16 +87,13 @@ class ChromaDBConnection(ExperimentalBaseConnection):
     def retrieve(self, collection_name, query):
         collection = self._raw_instance.get_collection(collection_name)
         embeddings = collection._embedding_function.__call__(query)
-        logging.info(embeddings)
         results = collection.query(
             query_embeddings=embeddings,
             n_results=10,
             include=["documents", "distances", "embeddings"]
         )
-
-        logging.info(results)
-
-        return pd.DataFrame(data=results)
+        df = pd.DataFrame(data=results)
+        return df[["ids", "distances", "embeddings", "documents"]]
 
 
     def upload_document(self, collection_name, file_paths):
@@ -118,9 +116,6 @@ class ChromaDBConnection(ExperimentalBaseConnection):
 
             for file_path in file_paths:
                 os.remove(file_path)
-
-            st.toast(body='New file uploaded!',
-                    icon='✅')
         except Exception as ex:
             raise ex
 
@@ -166,9 +161,7 @@ def connectChroma():
                                 **st.session_state["configuration"])
 
         st.session_state["is_connected"] = True
-
-        st.toast(body='Connection established!',
-                icon='✅')
+        st.toast(body='Connection established!', icon='✅')
 
         st.session_state["chroma_collections"] = st.session_state["conn"].get_collection_names()
 
@@ -187,49 +180,129 @@ if "chroma_collections" in st.session_state:
             options=st.session_state["chroma_collections"]
         )
 
+    delete_button_placeholder = st.empty()
+
     if "selected_collection" in st.session_state:
         if st.session_state["selected_collection"]:
             df = st.session_state["conn"].get_collection_data(collection_name=st.session_state["selected_collection"])
-            st.subheader("Embedding data")
-            st.markdown("Dataframe:")
+            embedding_data_placeholder = st.empty()
+            with embedding_data_placeholder.container():
+                st.subheader("Embedding data")
+                st.markdown("Dataframe:")
 
-            dataframe_placeholder = st.empty()
-            dataframe_placeholder.data_editor(df)
+                dataframe_placeholder = st.empty()
+                dataframe_placeholder.data_editor(df)
 
+            document_upload_placeholder = st.empty()
+            with document_upload_placeholder.container():
+                st.subheader("Document Upload")
 
-            st.subheader("Document Upload")
+                file_uploads = st.file_uploader('Only PDF(s)', type=['pdf'], accept_multiple_files=True)
+                file_paths = []
 
-            file_uploads = st.file_uploader('Only PDF(s)', type=['pdf'], accept_multiple_files=True)
-            file_paths = []
+                if file_uploads:
+                    for pdf_file in file_uploads:
+                        file_path = os.path.join(st.session_state["UPLOAD_FOLDER"], pdf_file.name)
+                        file_paths.append(file_path)
 
-            if file_uploads:
-                for pdf_file in file_uploads:
-                    file_path = os.path.join(st.session_state["UPLOAD_FOLDER"], pdf_file.name)
-                    file_paths.append(file_path)
+                        with open(file_path,"wb") as f:
+                            f.write(pdf_file.getbuffer())
 
-                    with open(file_path,"wb") as f:
-                        f.write(pdf_file.getbuffer())
+                    try:
+                        st.session_state["conn"].upload_document(st.session_state["selected_collection"], file_paths)
+                        st.toast(body='New file uploaded!',
+                                icon='✅')
+                    except Exception as ex:
+                        st.toast(body=f"{str(ex)}", icon="⚠️")
+                        st.toast(body='Failed to upload file!', icon='❌')
 
-                st.session_state["conn"].upload_document(st.session_state["selected_collection"], file_paths)
-                dataframe_placeholder.empty()
-                new_df = st.session_state["conn"].get_collection_data(collection_name=st.session_state["selected_collection"])
-                dataframe_placeholder.data_editor(new_df, key="new_df")
+                    dataframe_placeholder.empty()
+                    new_df = st.session_state["conn"].get_collection_data(collection_name=st.session_state["selected_collection"])
+                    dataframe_placeholder.data_editor(new_df, key="new_df")
 
-            st.subheader("Document Query")
-            query_placeholder = st.empty()
-            query = query_placeholder.text_input(label="Query")
-            query_dataframe_placeholder = st.empty()
+            document_query_placeholder = st.empty()
+            with document_query_placeholder.container():
+                st.subheader("Document Query")
+                query_placeholder = st.empty()
+                query = query_placeholder.text_input(label="Query")
+                query_dataframe_placeholder = st.empty()
 
-            if query:
-                query_df = st.session_state["conn"].retrieve(collection_name=st.session_state["selected_collection"], query=query)
-                query_dataframe_placeholder.data_editor(query_df)
+                if query:
+                    query_df = st.session_state["conn"].retrieve(collection_name=st.session_state["selected_collection"], query=query)
+                    query_dataframe_placeholder.data_editor(query_df)
 
+    if len(st.session_state["chroma_collections"]) != 0 and delete_button_placeholder.button(label="❗ Delete collection", type="primary"):
+        st.cache_resource.clear()
+        try:
+            st.session_state["conn"].delete_collection(st.session_state["selected_collection"])
+            st.toast(body='Collection deleted!', icon='✅')
+        except Exception as ex:
+            st.toast(body=f"{str(ex)}", icon="⚠️")
+            st.toast(body="Failed to delete connection", icon="😢")
+
+        st.session_state["chroma_collections"] = st.session_state["conn"].get_collection_names()
+        if len(st.session_state["chroma_collections"]) == 0:
+            delete_button_placeholder.empty()
+            embedding_data_placeholder.empty()
+            document_upload_placeholder.empty()
+            document_query_placeholder.empty()
+            st.session_state.pop("selected_collection")
+        else:
+            with embedding_data_placeholder.container():
+                st.subheader("Embedding data")
+                st.markdown("Dataframe:")
+
+                dataframe_placeholder = st.empty()
+                dataframe_placeholder.data_editor(df)
+
+            with document_upload_placeholder.container():
+                st.subheader("Document Upload")
+
+                file_uploads = st.file_uploader('Only PDF(s)', type=['pdf'], accept_multiple_files=True)
+                file_paths = []
+
+                if file_uploads:
+                    for pdf_file in file_uploads:
+                        file_path = os.path.join(st.session_state["UPLOAD_FOLDER"], pdf_file.name)
+                        file_paths.append(file_path)
+
+                        with open(file_path,"wb") as f:
+                            f.write(pdf_file.getbuffer())
+
+                    try:
+                        st.session_state["conn"].upload_document(st.session_state["selected_collection"], file_paths)
+                        st.toast(body='New file uploaded!',
+                                icon='✅')
+                    except Exception as ex:
+                        st.toast(body=f"{str(ex)}", icon="⚠️")
+                        st.toast(body='Failed to upload file!', icon='❌')
+
+                    dataframe_placeholder.empty()
+                    new_df = st.session_state["conn"].get_collection_data(collection_name=st.session_state["selected_collection"])
+                    dataframe_placeholder.data_editor(new_df, key="new_df")
+
+            with document_query_placeholder.container():
+                st.subheader("Document Query")
+                query_placeholder = st.empty()
+                query = query_placeholder.text_input(label="Query")
+                query_dataframe_placeholder = st.empty()
+
+                if query:
+                    query_df = st.session_state["conn"].retrieve(collection_name=st.session_state["selected_collection"], query=query)
+                    query_dataframe_placeholder.data_editor(query_df)
+
+        selected_collection_placeholder.empty()
+        st.session_state["selected_collection"] = selected_collection_placeholder.selectbox(
+            label="Chroma collections",
+            options=st.session_state["chroma_collections"],
+            key="new_select_box_after_delete"
+        )
 
 if "is_connected" in st.session_state and st.session_state["is_connected"]:
     with st.container():
         new_collection_name = st.sidebar.text_input(label='New collection name', placeholder='')
         new_collection_embedding = st.sidebar.selectbox(label='Embedding function',
-                                                        options=["DefaultEmbedding", "OpenAIEmbedding", "VertexEmbedding"])
+                                                        options=["DefaultEmbedding"])
 
         config = {}
         if new_collection_embedding != "DefaultEmbedding":
@@ -244,7 +317,6 @@ if "is_connected" in st.session_state and st.session_state["is_connected"]:
 
 
         if st.sidebar.button("Create"):
-
             try:
                 st.session_state["conn"].create_collection(collection_name=new_collection_name,
                                                         embedding_function_name=new_collection_embedding,
