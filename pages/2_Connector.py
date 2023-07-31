@@ -99,11 +99,11 @@ class ChromaDBConnection(ExperimentalBaseConnection):
         return df[["ids", "distances", "embeddings", "documents"]]
 
 
-    def upload_document(self, collection_name, file_paths):
+    def upload_document(self, directory, collection_name, file_paths):
         collection = self._raw_instance.get_collection(collection_name)
 
         try:
-            loader = DirectoryLoader(st.session_state["UPLOAD_FOLDER"], glob="*.*")
+            loader = DirectoryLoader(directory, glob="*.*")
             documents = loader.load()
             text_splitter = CharacterTextSplitter(chunk_size=1000, chunk_overlap=0)
             docs = text_splitter.split_documents(documents)
@@ -212,7 +212,7 @@ if "chroma_collections" in st.session_state:
                             f.write(pdf_file.getbuffer())
 
                     try:
-                        st.session_state["conn"].upload_document(st.session_state["selected_collection"], file_paths)
+                        st.session_state["conn"].upload_document(st.session_state["UPLOAD_FOLDER"], st.session_state["selected_collection"], file_paths)
                         st.toast(body='New file uploaded!',
                                 icon='✅')
                     except Exception as ex:
